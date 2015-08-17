@@ -14,7 +14,7 @@ This code explores how to interface to the C libraries libxml and sqlite includi
 ---
 **Modifications**
 
-Adopted code from Objective-C to Swift 2.
+Adapted code from Objective-C to Swift 2.
 
 **What is the License for the Tutorial Source Code?**
 
