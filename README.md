@@ -2,6 +2,11 @@
 Swift version of [Apple's XMLPerformance](https://developer.apple.com/library/ios/samplecode/XMLPerformance/Introduction/Intro.html) sample code project.
 
 ---
+**Requirements**
+
+Xcode7 beta 5 or later, Swift 2.
+
+---
 **Abstract from Apple**
 
 This sample explores two approaches to parsing XML, focusing on performance with respect to speed, memory footprint, and user experience. The XML data used is the current "Top 300" songs from the iTunes store. The data itself is not particularly important to the sample - it was chosen because of its simplicity, availability, and because the size (approximately 850KB) is sufficient to demonstrate the performance issues central to the sample.
