@@ -83,27 +83,27 @@ class iTunesRSSParser: NSObject {
         NSURLCache.sharedURLCache().removeAllCachedResponses()
         parsedSongs = [Song]()
         let url = NSURL(string: "http://ax.phobos.apple.com.edgesuite.net/WebObjects/MZStore.woa/wpa/MRSS/newreleases/limit=300/rss.xml")
-        NSThread.detachNewThreadSelector("downloadAndParse:", toTarget: self, withObject: url)
+        NSThread.detachNewThreadSelector(#selector(iTunesRSSParser.downloadAndParse(_:)), toTarget: self, withObject: url)
     }
     
 
     // Subclasses should invoke these methods and let the superclass manage communication with the delegate.
     // Each of these methods must be invoked on the main thread.
     func downloadStarted() {
-        assert(NSThread.isMainThread(), "\(__FUNCTION__) at line \(__LINE__) called on secondary thread")
+        assert(NSThread.isMainThread(), "\(#function) at line \(#line) called on secondary thread")
         downloadStartTimeReference = NSDate.timeIntervalSinceReferenceDate()
         UIApplication.sharedApplication().networkActivityIndicatorVisible = true
     }
     
     func downloadEnded() {
-        assert(NSThread.isMainThread(), "\(__FUNCTION__) at line \(__LINE__) called on secondary thread")
+        assert(NSThread.isMainThread(), "\(#function) at line \(#line) called on secondary thread")
         let duration = NSDate.timeIntervalSinceReferenceDate() - downloadStartTimeReference!
         downloadDuration += duration
         UIApplication.sharedApplication().networkActivityIndicatorVisible = false
     }
     
     func parseEnded() {
-        assert(NSThread.isMainThread(), "\(__FUNCTION__) at line \(__LINE__) called on secondary thread")
+        assert(NSThread.isMainThread(), "\(#function) at line \(#line) called on secondary thread")
         
         if parsedSongs.count > 0 {
             delegate?.parser?(self, didParseSongs: parsedSongs)
@@ -120,7 +120,7 @@ class iTunesRSSParser: NSObject {
     }
     
     func parsedSong(song: Song) {
-        assert(NSThread.isMainThread(), "\(__FUNCTION__) at line \(__LINE__) called on secondary thread")
+        assert(NSThread.isMainThread(), "\(#function) at line \(#line) called on secondary thread")
         parsedSongs.append(song)
         if parsedSongs.count > countForNotification {
             delegate?.parser?(self, didParseSongs: parsedSongs)
@@ -129,12 +129,12 @@ class iTunesRSSParser: NSObject {
     }
     
     func parseError(error: NSError) {
-        assert(NSThread.isMainThread(), "\(__FUNCTION__) at line \(__LINE__) called on secondary thread")
+        assert(NSThread.isMainThread(), "\(#function) at line \(#line) called on secondary thread")
         delegate?.parser?(self, didFailWithError:error)
     }
     
     func addToParseDuration(duration: NSTimeInterval) {
-        assert(NSThread.isMainThread(), "\(__FUNCTION__) at line \(__LINE__) called on secondary thread")
+        assert(NSThread.isMainThread(), "\(#function) at line \(#line) called on secondary thread")
         parseDuration += duration
     }
 }
