@@ -28,7 +28,7 @@ class Song {
     var title: String?
     var artist: String?
     var album: String?
-    var releaseDate: NSDate?
+    var releaseDate: Date?
     var category: String?
     
 }

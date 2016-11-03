@@ -145,6 +145,7 @@
 				TargetAttributes = {
 					A1F273B11B66FFAC00BFADF9 = {
 						CreatedOnToolsVersion = 6.4;
+						LastSwiftMigration = 0810;
 					};
 				};
 			};
@@ -330,6 +331,7 @@
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_OBJC_BRIDGING_HEADER = "XMLPerformance/XMLPerformance-Bridging-Header.h";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 3.0;
 				TARGETED_DEVICE_FAMILY = 1;
 			};
 			name = Debug;
@@ -350,6 +352,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = "com.ftsinfotech.DFrancis.$(PRODUCT_NAME:rfc1034identifier)";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_OBJC_BRIDGING_HEADER = "XMLPerformance/XMLPerformance-Bridging-Header.h";
+				SWIFT_VERSION = 3.0;
 				TARGETED_DEVICE_FAMILY = 1;
 			};
 			name = Release;

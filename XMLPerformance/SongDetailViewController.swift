@@ -34,21 +34,21 @@ class SongDetailViewController: UITableViewController {
     }
     
     
-    var dateFormatter: NSDateFormatter {
-        let formatter = NSDateFormatter()
-        formatter.dateStyle = .MediumStyle
-        formatter.timeStyle = .NoStyle
+    var dateFormatter: DateFormatter {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
+        formatter.timeStyle = .none
         return formatter
     }
     
     
     
-    override func tableView(tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
+    override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
         return 4
     }
     
-    override func tableView(tableView: UITableView, cellForRowAtIndexPath indexPath: NSIndexPath) -> UITableViewCell {
-        let cell = tableView.dequeueReusableCellWithIdentifier("SongDetailCell", forIndexPath: indexPath)
+    override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
+        let cell = tableView.dequeueReusableCell(withIdentifier: "SongDetailCell", for: indexPath as IndexPath)
         switch indexPath.row {
         case 0:
             cell.textLabel!.text = NSLocalizedString("album", comment: "album label")
@@ -63,7 +63,7 @@ class SongDetailViewController: UITableViewController {
             cell.textLabel!.text = NSLocalizedString("released", comment: "released label")
             cell.detailTextLabel!.text = ""
             if let date = song?.releaseDate {
-                cell.detailTextLabel!.text = dateFormatter.stringFromDate(date)
+                cell.detailTextLabel!.text = dateFormatter.string(from: date as Date)
             }
         default:
             break
@@ -71,7 +71,7 @@ class SongDetailViewController: UITableViewController {
         return cell
     }
     
-    override func tableView(tableView: UITableView, titleForHeaderInSection section: Int) -> String? {
+    override func tableView(_ tableView: UITableView, titleForHeaderInSection section: Int) -> String? {
         return NSLocalizedString("Song details:", comment: "Song details label")
     }
 }

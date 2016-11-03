@@ -27,29 +27,29 @@ import UIKit
 
 class StatsViewController: UITableViewController {
     
-    override func viewWillAppear(animated: Bool) {
+    override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
         tableView.reloadData()
     }
 
-    @IBAction func resetStatistics(sender: AnyObject) {
+    @IBAction func resetStatistics(_ sender: AnyObject) {
         ResetStatisticsDatabase()
         tableView.reloadData()
     }
     
     
     // MARK: - Table view data source
-
-    override func numberOfSectionsInTableView(tableView: UITableView) -> Int {
+    override func numberOfSections(in tableView: UITableView) -> Int {
         return 2
     }
 
-    override func tableView(tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
+    
+    override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
         return 3
     }
 
-    override func tableView(tableView: UITableView, cellForRowAtIndexPath indexPath: NSIndexPath) -> UITableViewCell {
-        let cell = tableView.dequeueReusableCellWithIdentifier("StatsCell", forIndexPath: indexPath)
+    override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
+        let cell = tableView.dequeueReusableCell(withIdentifier: "StatsCell", for: indexPath as IndexPath)
 
         switch (indexPath.row) {
         case 0:
@@ -67,7 +67,7 @@ class StatsViewController: UITableViewController {
         return cell
     }
     
-    override func tableView(tableView: UITableView, titleForHeaderInSection section: Int) -> String? {
+    override func tableView(_ tableView: UITableView, titleForHeaderInSection section: Int) -> String? {
         let numberOfRuns = NumberOfRunsForParserType(XMLParserType(rawValue: section)!)
         let parserName = (section == 0) ? CocoaXMLParser.parserName : LibXMLParser.parserName
         var title = ""

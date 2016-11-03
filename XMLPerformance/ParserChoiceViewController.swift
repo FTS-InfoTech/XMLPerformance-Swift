@@ -27,29 +27,30 @@ import UIKit
 
 class ParserChoiceViewController: UITableViewController {
     
-    var parserSelection: NSIndexPath = NSIndexPath(forRow: 0, inSection: 0)
+    var parserSelection: IndexPath = IndexPath(row: 0, section: 0)
 
     // When the parsing is finished, the user can return to the ParserChoiceViewController by
     // touching the Done button which will trigger the exit segue associated with this action.
-    @IBAction func doneWithSongs(segue: UIStoryboardSegue) {
+    @IBAction func doneWithSongs(_ segue: UIStoryboardSegue) {
         
     }
 
-    override func prepareForSegue(segue: UIStoryboardSegue, sender: AnyObject?) {
+    
+    override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
         if segue.identifier == "ShowSongs" {
-            let navController = segue.destinationViewController as! UINavigationController
+            let navController = segue.destination as! UINavigationController
             let songsViewController = navController.topViewController as! SongsViewController
             songsViewController.parserType = XMLParserType(rawValue: self.parserSelection.row)
         }
     }
 
     // MARK: - Table View
-    override func tableView(tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
+    override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
         return 2
     }
     
-    override func tableView(tableView: UITableView, cellForRowAtIndexPath indexPath: NSIndexPath) -> UITableViewCell {
-        let cell = tableView.dequeueReusableCellWithIdentifier("Cell", forIndexPath: indexPath) 
+    override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
+        let cell = tableView.dequeueReusableCell(withIdentifier: "Cell", for: indexPath as IndexPath) 
         
         switch indexPath.row {
         case 0:
@@ -60,13 +61,13 @@ class ParserChoiceViewController: UITableViewController {
             break
         }
         
-        cell.accessoryType = indexPath.isEqual(parserSelection) ? UITableViewCellAccessoryType.Checkmark : UITableViewCellAccessoryType.None
+        cell.accessoryType = (indexPath == parserSelection) ? UITableViewCellAccessoryType.checkmark : UITableViewCellAccessoryType.none
         return cell
     }
     
-    override func tableView(tableView: UITableView, didSelectRowAtIndexPath indexPath: NSIndexPath) {
+    override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         self.parserSelection = indexPath;
-        tableView.deselectRowAtIndexPath(indexPath, animated: true)
+        tableView.deselectRow(at: indexPath as IndexPath, animated: true)
         tableView.reloadData()
     }
     

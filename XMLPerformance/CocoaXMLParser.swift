@@ -24,18 +24,18 @@
 
 import Foundation
 
-class CocoaXMLParser: iTunesRSSParser, NSXMLParserDelegate {
+class CocoaXMLParser: iTunesRSSParser, XMLParserDelegate {
     var currentString: String?
     var currentSong: Song?
     var storingCharacters = false
-    var parseFormatter: NSDateFormatter {
-        let formatter = NSDateFormatter()
-        formatter.dateStyle = NSDateFormatterStyle.LongStyle
-        formatter.timeStyle = NSDateFormatterStyle.NoStyle
+    var parseFormatter: DateFormatter {
+        let formatter = DateFormatter()
+        formatter.dateStyle = DateFormatter.Style.long
+        formatter.timeStyle = DateFormatter.Style.none
         
         // necessary because iTunes RSS feed is not localized, so if the device region has been set to other than US
         // the date formatter must be set to US locale in order to parse the dates
-        formatter.locale = NSLocale(localeIdentifier: "US")
+        formatter.locale = Locale(identifier: "US")
         return formatter
     }
     
@@ -49,25 +49,30 @@ class CocoaXMLParser: iTunesRSSParser, NSXMLParserDelegate {
     }
     
     override class var parserType: XMLParserType {
-        return .NSXMLParser
+        return .nsxmlParser
     }
-
-    override func downloadAndParse(url: NSURL) {
+    
+    func startDownload(_ url: URL) {
+        let request = NSURLRequest(url: url)
+        
+    }
+    
+    override func downloadAndParse(_ url: NSURL) {
         done = false
         
         xmlData = NSMutableData()
-        NSURLCache.sharedURLCache().removeAllCachedResponses()
-        let theRequest = NSURLRequest(URL: url)
+        URLCache.shared.removeAllCachedResponses()
+        let theRequest = NSURLRequest(url: url as URL)
         
         // create the connection with the request and start loading the data
-        rssConnection = NSURLConnection(request: theRequest, delegate: self)
-        dispatch_async(dispatch_get_main_queue()) {
+        rssConnection = NSURLConnection(request: theRequest as URLRequest, delegate: self)
+        DispatchQueue.main.async {
             self .downloadStarted()
         }
         
         if rssConnection != nil {
             repeat {
-                NSRunLoop.currentRunLoop().runMode(NSDefaultRunLoopMode, beforeDate: NSDate.distantFuture() )
+                RunLoop.current.run(mode: RunLoopMode.defaultRunLoopMode, before: NSDate.distantFuture )
             } while !done
         }
         
@@ -81,39 +86,39 @@ class CocoaXMLParser: iTunesRSSParser, NSXMLParserDelegate {
     Disable caching so that each time we run this app we are starting with a clean slate.
     You may not want to do this in your application.
     */
-    func connection(connection: NSURLConnection, willCacheResponse cachedResponse: NSCachedURLResponse) -> NSCachedURLResponse? {
+    func connection(_ connection: NSURLConnection, willCacheResponse cachedResponse: CachedURLResponse) -> CachedURLResponse? {
         return nil
     }
     
     // Forward errors to the delegate
-    func connection(connection: NSURLConnection, didFailWithError error: NSError) {
+    func connection(_ connection: NSURLConnection, didFailWithError error: NSError) {
         done = true
-        dispatch_async(dispatch_get_main_queue()) {
+        DispatchQueue.main.async {
             self .parseError(error)
         }
     }
     
     // Called when a chunk of data has been downloaded.
-   func connection(connection: NSURLConnection, didReceiveData data: NSData) {
+   func connection(_ connection: NSURLConnection, didReceiveData data: NSData) {
         // Append the downloaded chunk of data.
-        xmlData?.appendData(data)
+        xmlData?.append(data as Data)
     }
  
-    func connectionDidFinishLoading(connection: NSURLConnection) {
-        dispatch_async(dispatch_get_main_queue()) {
+    func connectionDidFinishLoading(_ connection: NSURLConnection) {
+        DispatchQueue.main.async {
             self.downloadEnded()
         }
         
-        let parser = NSXMLParser(data: xmlData!)
+        let parser = XMLParser(data: xmlData! as Data)
         parser.delegate = self
         
         currentString = ""
         
-        let start = NSDate.timeIntervalSinceReferenceDate()
+        let start = NSDate.timeIntervalSinceReferenceDate
         parser.parse()
-        let duration = NSDate.timeIntervalSinceReferenceDate() - start
+        let duration = NSDate.timeIntervalSinceReferenceDate - start
         
-        dispatch_async(dispatch_get_main_queue()) {
+        DispatchQueue.main.async {
             self.addToParseDuration(duration)
             self.parseEnded()
         }
@@ -131,7 +136,7 @@ class CocoaXMLParser: iTunesRSSParser, NSXMLParserDelegate {
     func finishedCurrentSong() {
         // dispatch_async will not retain the self.currentSong so we add a reference to it with if let
         if let currentSong = self.currentSong {
-            dispatch_async(dispatch_get_main_queue()) {
+            DispatchQueue.main.async {
                 self.parsedSong(currentSong)
             }
         }
@@ -145,14 +150,14 @@ class CocoaXMLParser: iTunesRSSParser, NSXMLParserDelegate {
     // Declaring these as static constants reduces the number of objects created during the run
     // and is less prone to programmer error.
     //
-    private let itemName = "item"
-    private let titleName = "title"
-    private let categoryName = "category"
-    private let artistName = "itms:artist"
-    private let albumName = "itms:album"
-    private let releaseDateName = "itms:releasedate"
+    fileprivate let itemName = "item"
+    fileprivate let titleName = "title"
+    fileprivate let categoryName = "category"
+    fileprivate let artistName = "itms:artist"
+    fileprivate let albumName = "itms:album"
+    fileprivate let releaseDateName = "itms:releasedate"
 
-    func parser(parser: NSXMLParser, didStartElement elementName: String, namespaceURI: String?, qualifiedName qName: String?, attributes attributeDict: [String : String]) {
+    func parser(_ parser: XMLParser, didStartElement elementName: String, namespaceURI: String?, qualifiedName qName: String?, attributes attributeDict: [String : String]) {
         if elementName == itemName {
             currentSong = Song()
         } else if elementName == titleName || elementName == categoryName || elementName == artistName || elementName == albumName || elementName == releaseDateName {
@@ -161,7 +166,7 @@ class CocoaXMLParser: iTunesRSSParser, NSXMLParserDelegate {
         }
     }
     
-    func parser(parser: NSXMLParser, didEndElement elementName: String, namespaceURI: String?, qualifiedName qName: String?) {
+    func parser(_ parser: XMLParser, didEndElement elementName: String, namespaceURI: String?, qualifiedName qName: String?) {
         if elementName == itemName {
             finishedCurrentSong()
         } else if elementName == titleName {
@@ -173,12 +178,12 @@ class CocoaXMLParser: iTunesRSSParser, NSXMLParserDelegate {
         } else if elementName == albumName {
             currentSong?.album = currentString
         } else if elementName == releaseDateName {
-            currentSong?.releaseDate = parseFormatter.dateFromString(currentString!)
+            currentSong?.releaseDate = parseFormatter.date(from: currentString!)
         }
         storingCharacters = false
     }
     
-    func parser(parser: NSXMLParser, foundCharacters string: String) {
+    func parser(_ parser: XMLParser, foundCharacters string: String) {
         if storingCharacters {
             currentString = currentString! + string
         }
@@ -188,7 +193,7 @@ class CocoaXMLParser: iTunesRSSParser, NSXMLParserDelegate {
     A production application should include robust error handling as part of its parsing implementation.
     The specifics of how errors are handled depends on the application.
     */
-    func parser(parser: NSXMLParser, parseErrorOccurred parseError: NSError) {
+    func parser(_ parser: XMLParser, parseErrorOccurred parseError: Error) {
         // Handle errors as appropriate for your application.
     }
     

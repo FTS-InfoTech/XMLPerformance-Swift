@@ -4,7 +4,9 @@ Swift version of [Apple's XMLPerformance](https://developer.apple.com/library/io
 ---
 **Requirements**
 
-Xcode7 beta 5 or later, Swift 2.
+Xcode 8.1 or later, Swift 3.
+
+For Swift 2.3 version, see branch 'swift-2.3'.
 
 ---
 **Abstract from Apple**
@@ -19,7 +21,7 @@ This code explores how to interface to the C libraries libxml and sqlite includi
 ---
 **Modifications**
 
-Adapted code from Objective-C to Swift 2.
+Adapted code from Objective-C to Swift 3.
 
 **What is the License for the Tutorial Source Code?**
 

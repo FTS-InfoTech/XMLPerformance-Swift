@@ -24,27 +24,27 @@
 
 import Foundation
 
-private var database: COpaquePointer = nil
-private var insert_statement: COpaquePointer = nil
-private var count_statement: COpaquePointer = nil
-private var mean_download_time_statement: COpaquePointer = nil
-private var mean_parse_time_statement: COpaquePointer = nil
-private var mean_download_and_parse_time_statement: COpaquePointer = nil
-private var reset_statement: COpaquePointer = nil
+private var database: OpaquePointer? = nil
+private var insert_statement: OpaquePointer? = nil
+private var count_statement: OpaquePointer? = nil
+private var mean_download_time_statement: OpaquePointer? = nil
+private var mean_parse_time_statement: OpaquePointer? = nil
+private var mean_download_and_parse_time_statement: OpaquePointer? = nil
+private var reset_statement: OpaquePointer? = nil
 
 // Returns a reference to the database, creating and opening if necessary.
-func Database() -> COpaquePointer {
-    assert(NSThread.isMainThread(), "\(__FUNCTION__) at line \(__LINE__) called on secondary thread")
+func Database() -> OpaquePointer {
+    assert(Thread.isMainThread, "\(#function) at line \(#line) called on secondary thread")
     if database == nil {
         // First, test for existence.
-        let fileManager = NSFileManager.defaultManager()
-        let paths = NSSearchPathForDirectoriesInDomains(NSSearchPathDirectory.DocumentDirectory, NSSearchPathDomainMask.UserDomainMask, true)
+        let fileManager = FileManager.default
+        let paths = NSSearchPathForDirectoriesInDomains(FileManager.SearchPathDirectory.documentDirectory, FileManager.SearchPathDomainMask.userDomainMask, true)
         let documentsDirectory = paths[0] as NSString
-        let writableDBPath = documentsDirectory.stringByAppendingPathComponent("stats.sqlite")
-        if !fileManager.fileExistsAtPath(writableDBPath) {
-            let defaultDBPath = NSBundle.mainBundle().pathForResource("stats", ofType:"sqlite")
+        let writableDBPath = documentsDirectory.appendingPathComponent("stats.sqlite")
+        if !fileManager.fileExists(atPath: writableDBPath) {
+            let defaultDBPath = Bundle.main.path(forResource: "stats", ofType:"sqlite")
             do {
-                try fileManager.copyItemAtPath(defaultDBPath!, toPath: writableDBPath)
+                try fileManager.copyItem(atPath: defaultDBPath!, toPath: writableDBPath)
             }
             catch let error as NSError {
                 assertionFailure("Failed to create writable database file with message \(error.localizedDescription)")
@@ -59,13 +59,13 @@ func Database() -> COpaquePointer {
             // Additional error handling, as appropriate...
         }
     }
-    return database
+    return database!
 }
 
 
 // Close the database. This should be called when the application terminates.
 func CloseStatisticsDatabase() {
-    assert(NSThread.isMainThread(), "\(__FUNCTION__) at line \(__LINE__) called on secondary thread")
+    assert(Thread.isMainThread, "\(#function) at line \(#line) called on secondary thread")
 
     // Finalize (delete) all of the SQLite compiled queries.
     if insert_statement != nil {
@@ -110,8 +110,8 @@ func CloseStatisticsDatabase() {
 
 
 // Retrieve the number of measurements available for a parser of a given type.
-func NumberOfRunsForParserType(parserType: XMLParserType) -> UInt {
-    assert(NSThread.isMainThread(), "\(__FUNCTION__) at line \(__LINE__) called on secondary thread")
+func NumberOfRunsForParserType(_ parserType: XMLParserType) -> UInt {
+    assert(Thread.isMainThread, "\(#function) at line \(#line) called on secondary thread")
     let db = Database()
     if count_statement == nil {
         // Prepare (compile) the SQL statement.
@@ -143,8 +143,8 @@ func NumberOfRunsForParserType(parserType: XMLParserType) -> UInt {
 
 
 // Retrieve the average number of seconds from starting the download to finishing the download for a parser of a given type.
-func MeanDownloadTimeForParserType(parserType: XMLParserType) -> Double {
-    assert(NSThread.isMainThread(), "\(__FUNCTION__) at line \(__LINE__) called on secondary thread")
+func MeanDownloadTimeForParserType(_ parserType: XMLParserType) -> Double {
+    assert(Thread.isMainThread, "\(#function) at line \(#line) called on secondary thread")
     let db = Database()
     if mean_download_time_statement == nil {
         let sql = "SELECT AVG(download_duration) FROM statistic WHERE parser_type = ?"
@@ -171,8 +171,8 @@ func MeanDownloadTimeForParserType(parserType: XMLParserType) -> Double {
 
 
 // Retrieve the average number of seconds from starting the download to finishing the parse for a parser of a given type. This is the total amount of time the parser needs to do all of its work.
-func MeanParseTimeForParserType(parserType: XMLParserType) -> Double {
-    assert(NSThread.isMainThread(), "\(__FUNCTION__) at line \(__LINE__) called on secondary thread")
+func MeanParseTimeForParserType(_ parserType: XMLParserType) -> Double {
+    assert(Thread.isMainThread, "\(#function) at line \(#line) called on secondary thread")
     let db = Database()
     if mean_parse_time_statement == nil {
         let sql = "SELECT AVG(parse_duration) FROM statistic WHERE parser_type = ?"
@@ -199,8 +199,8 @@ func MeanParseTimeForParserType(parserType: XMLParserType) -> Double {
 
 
 // Retrieve the average number of seconds from starting the download to finishing the parse for a parser of a given type. This is the total amount of time the parser needs to do all of its work.
-func MeanTotalTimeForParserType(parserType: XMLParserType) -> Double {
-    assert(NSThread.isMainThread(), "\(__FUNCTION__) at line \(__LINE__) called on secondary thread")
+func MeanTotalTimeForParserType(_ parserType: XMLParserType) -> Double {
+    assert(Thread.isMainThread, "\(#function) at line \(#line) called on secondary thread")
     let db = Database()
     if mean_download_and_parse_time_statement == nil {
         let sql = "SELECT AVG(total_duration) FROM statistic WHERE parser_type = ?"
@@ -228,7 +228,7 @@ func MeanTotalTimeForParserType(parserType: XMLParserType) -> Double {
 
 // Delete all stored measurements. You may want to do this after running the application using performance tools, which add considerable overhead and will distort the measurements. This is also the case if you were using the debugger, particularly if you were pausing execution.
 func ResetStatisticsDatabase() {
-    assert(NSThread.isMainThread(), "\(__FUNCTION__) at line \(__LINE__) called on secondary thread")
+    assert(Thread.isMainThread, "\(#function) at line \(#line) called on secondary thread")
     let db = Database()
     if reset_statement == nil {
         let sql = "DELETE FROM statistic"
@@ -248,8 +248,8 @@ func ResetStatisticsDatabase() {
 
 
 // Store a measurement to the database.
-func WriteStatisticToDatabase(parserType: XMLParserType, _ downloadDuration: Double, _ parseDuration: Double, _ totalDuration: Double)  {
-    assert(NSThread.isMainThread(), "\(__FUNCTION__) at line \(__LINE__) called on secondary thread")
+func WriteStatisticToDatabase(_ parserType: XMLParserType, _ downloadDuration: Double, _ parseDuration: Double, _ totalDuration: Double)  {
+    assert(Thread.isMainThread, "\(#function) at line \(#line) called on secondary thread")
     let db = Database()
     if insert_statement == nil {
         let sql = "INSERT INTO statistic (parser_type, download_duration, parse_duration, total_duration) VALUES(?, ?, ?, ?)"

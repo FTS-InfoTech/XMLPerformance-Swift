@@ -45,20 +45,20 @@ class LibXMLParser : iTunesRSSParser {
     var currentSong: Song?
     var parsingASong = false
     
-    var parseFormatter: NSDateFormatter {
-        let formatter = NSDateFormatter()
-        formatter.dateStyle = NSDateFormatterStyle.LongStyle
-        formatter.timeStyle = NSDateFormatterStyle.NoStyle
+    var parseFormatter: DateFormatter {
+        let formatter = DateFormatter()
+        formatter.dateStyle = DateFormatter.Style.long
+        formatter.timeStyle = DateFormatter.Style.none
         
         // necessary because iTunes RSS feed is not localized, so if the device region has been set to other than US
         // the date formatter must be set to US locale in order to parse the dates
-        formatter.locale = NSLocale(localeIdentifier: "US")
+        formatter.locale = NSLocale(localeIdentifier: "US") as Locale!
         return formatter
     }
     
-    private var currentString : String {
+    fileprivate var currentString : String {
         // Create a string with the character data using UTF-8 encoding. UTF-8 is the default XML data encoding.
-        let currentString = NSString(data: characterBuffer, encoding: NSUTF8StringEncoding)! as String
+        let currentString = NSString(data: characterBuffer as Data, encoding: String.Encoding.utf8.rawValue)! as String
         characterBuffer.length = 0
         return currentString
     }
@@ -68,37 +68,37 @@ class LibXMLParser : iTunesRSSParser {
     }
     
     override class var parserType: XMLParserType {
-        return .LibXMLParser
+        return .libXMLParser
     }
     
     /*
     This method is called on a secondary thread by the superclass. We have asynchronous work to do here with downloading and parsing data, so we will need a run loop to prevent the thread from exiting before we are finished.
     */
-    override func downloadAndParse(url: NSURL) {
+    override func downloadAndParse(_ url: NSURL) {
         done = false
 
         characterBuffer.length = 0
-        NSURLCache.sharedURLCache().removeAllCachedResponses()
-        let theRequest = NSURLRequest(URL: url)
+        URLCache.shared.removeAllCachedResponses()
+        let theRequest = NSURLRequest(url: url as URL)
         
         // create the connection with the request and start loading the data
-        rssConnection = NSURLConnection(request: theRequest, delegate: self)
+        rssConnection = NSURLConnection(request: theRequest as URLRequest, delegate: self)
 
         // This creates a context for "push" parsing in which chunks of data that are not "well balanced" can be passed
         // to the context for streaming parsing. The handler structure defined above will be used for all the parsing.
         // The second argument, self, will be passed as user data to each of the SAX handlers. The last three arguments
         // are left blank to avoid creating a tree in memory.
         // Reference: http://stackoverflow.com/questions/30786883/swift-2-unsafemutablepointervoid-to-object
-        context = xmlCreatePushParserCtxt(&simpleSAXHandlerStruct, UnsafeMutablePointer(Unmanaged.passUnretained(self).toOpaque())
+        context = xmlCreatePushParserCtxt(&simpleSAXHandlerStruct, Unmanaged.passUnretained(self).toOpaque()
             , nil, 0, nil)
 
-        dispatch_async(dispatch_get_main_queue()) {
+        DispatchQueue.main.async {
             self .downloadStarted()
         }
         
         if rssConnection != nil {
             repeat {
-                NSRunLoop.currentRunLoop().runMode(NSDefaultRunLoopMode, beforeDate: NSDate.distantFuture() )
+                RunLoop.current.run(mode: RunLoopMode.defaultRunLoopMode, before: Date.distantFuture )
             } while !done
         }
         
@@ -114,45 +114,47 @@ class LibXMLParser : iTunesRSSParser {
     /*
     Disable caching so that each time we run this app we are starting with a clean slate. You may not want to do this in your application.
     */
-    func connection(connection: NSURLConnection, willCacheResponse cachedResponse: NSCachedURLResponse) -> NSCachedURLResponse? {
+    func connection(_ connection: NSURLConnection, willCacheResponse cachedResponse: CachedURLResponse) -> CachedURLResponse? {
         return nil
     }
     
     // Forward errors to the delegate
-    func connection(connection: NSURLConnection, didFailWithError error: NSError) {
+    func connection(_ connection: NSURLConnection, didFailWithError error: NSError) {
         done = true
-        dispatch_async(dispatch_get_main_queue()) {
+        DispatchQueue.main.async {
             self .parseError(error)
         }
     }
     
     // Called when a chunk of data has been downloaded.
-    func connection(connection: NSURLConnection, didReceiveData data: NSData) {
+    func connection(_ connection: NSURLConnection, didReceiveData data: Data) {
         
         // Append the downloaded chunk of data.
-        let start = NSDate.timeIntervalSinceReferenceDate()
+        let start = Date.timeIntervalSinceReferenceDate
         
         // Process the downloaded chunk of data.
-        xmlParseChunk(context!, UnsafePointer<CChar>(data.bytes), CInt(data.length), CInt(0));
+        data.withUnsafeBytes { (bytes: UnsafePointer<CChar>) -> Void in
+            xmlParseChunk(context!, bytes, CInt(data.count), 0)
+        }
         
-        let duration = NSDate.timeIntervalSinceReferenceDate() -  start
-        dispatch_async(dispatch_get_main_queue()) {
+        let duration = Date.timeIntervalSinceReferenceDate -  start
+        DispatchQueue.main.async {
             self .addToParseDuration(duration)
         }
     }
     
-    func connectionDidFinishLoading(connection: NSURLConnection) {
-        dispatch_async(dispatch_get_main_queue()) {
+    func connectionDidFinishLoading(_ connection: NSURLConnection) {
+        DispatchQueue.main.async {
             self.downloadEnded()
         }
         
-        let start = NSDate.timeIntervalSinceReferenceDate()
+        let start = Date.timeIntervalSinceReferenceDate
     
         // Signal the context that parsing is complete by passing "1" as the last parameter.
         xmlParseChunk(context!, nil, 0, 1)
         
-        let duration = NSDate.timeIntervalSinceReferenceDate() -  start
-        dispatch_async(dispatch_get_main_queue()) {
+        let duration = Date.timeIntervalSinceReferenceDate -  start
+        DispatchQueue.main.async {
             self.addToParseDuration(duration)
             self.parseEnded()
         }
@@ -164,15 +166,15 @@ class LibXMLParser : iTunesRSSParser {
     /*
     Character data is appended to a buffer until the current element ends.
     */
-    func appendCharacters(charactersFound: UnsafePointer<xmlChar>, length:Int32) {
-        characterBuffer.appendBytes(UnsafePointer<Void>(charactersFound), length: Int(length))
+    func appendCharacters(_ charactersFound: UnsafePointer<xmlChar>, length:Int32) {
+        characterBuffer.append(UnsafeRawPointer(charactersFound), length: Int(length))
     }
     
     func finishedCurrentSong() {
         
         // dispatch_async will not retain the self.currentSong so we add a reference to it with if let
         if let currentSong = self.currentSong {
-            dispatch_async(dispatch_get_main_queue()) {
+            DispatchQueue.main.async {
                 self.parsedSong(currentSong)
             }
         }
@@ -198,13 +200,12 @@ child nodes of the Song currently being parsed. For those nodes we want to accum
 in a buffer. Some of the child nodes use a namespace prefix.
 */
 // Reference: http://stackoverflow.com/questions/31311166/swift-unsafemutablepointer-unsafemutablepointerunsafepointersometype
-private func startElementSAX(ctx: UnsafeMutablePointer<Void>, name: UnsafePointer<xmlChar>, prefix: UnsafePointer<xmlChar>, URI: UnsafePointer<xmlChar>, nb_namespaces: CInt, namespaces: UnsafeMutablePointer<UnsafePointer<xmlChar>>, nb_attributes: CInt, nb_defaulted: CInt, attributes: UnsafeMutablePointer<UnsafePointer<xmlChar>>) {
+private func startElementSAX(_ ctx: UnsafeMutableRawPointer?, name: UnsafePointer<xmlChar>?, prefix: UnsafePointer<xmlChar>?, URI: UnsafePointer<xmlChar>?, nb_namespaces: CInt, namespaces: UnsafeMutablePointer<UnsafePointer<xmlChar>?>?, nb_attributes: CInt, nb_defaulted: CInt, attributes: UnsafeMutablePointer<UnsafePointer<xmlChar>?>?) {
         
-        let parser = Unmanaged<LibXMLParser>.fromOpaque(COpaquePointer(ctx)).takeUnretainedValue()
+        let parser = Unmanaged<LibXMLParser>.fromOpaque(ctx!).takeUnretainedValue()
     
         // Convert the name param to a Swift String 'localName'
-        let cString = UnsafePointer<CChar>(name)
-        let localName = String.fromCString(cString)
+        let localName = String(cString: name!)
     
         if prefix == nil && localName == itemName {
             let newSong = Song()
@@ -216,8 +217,7 @@ private func startElementSAX(ctx: UnsafeMutablePointer<Void>, name: UnsafePointe
                     parser.storingCharacters = true
                 }
             } else {
-                let cString = UnsafePointer<CChar>(prefix)
-                let localPrefix = String.fromCString(cString)
+                let localPrefix = String(cString: prefix!)
                 if localPrefix == itmsName {
                     if localName == artistName || localName == albumName || localName == releaseDateName {
                         parser.storingCharacters = true
@@ -236,18 +236,17 @@ to a method in the superclass which will eventually deliver it to the delegate. 
 care about, this means we have all the character data. The next step is to create an NSString using the buffer
 contents and store that with the current Song object.
 */
-private func endElementSAX(ctx: UnsafeMutablePointer<Void>,
-    name: UnsafePointer<xmlChar>,
-    prefix: UnsafePointer<xmlChar>,
-    URI: UnsafePointer<xmlChar>) {
+private func endElementSAX(_ ctx: UnsafeMutableRawPointer?,
+    name: UnsafePointer<xmlChar>?,
+    prefix: UnsafePointer<xmlChar>?,
+    URI: UnsafePointer<xmlChar>?) {
         
-        let parser = Unmanaged<LibXMLParser>.fromOpaque(COpaquePointer(ctx)).takeUnretainedValue()
+        let parser = Unmanaged<LibXMLParser>.fromOpaque(ctx!).takeUnretainedValue()
         guard parser.parsingASong else {
             return
         }
         
-        let cString = UnsafePointer<CChar>(name)
-        let localName = String.fromCString(cString)
+        let localName = String(cString: name!)
 
         if prefix == nil {
             if localName == itemName {
@@ -259,8 +258,7 @@ private func endElementSAX(ctx: UnsafeMutablePointer<Void>,
                 parser.currentSong?.category = parser.currentString
             }
         } else {
-            let cString = UnsafePointer<CChar>(prefix)
-            let localPrefix = String.fromCString(cString)
+            let localPrefix = String(cString: prefix!)
             if localPrefix == itmsName {
                 if localName == artistName {
                     parser.currentSong?.artist = parser.currentString
@@ -268,7 +266,7 @@ private func endElementSAX(ctx: UnsafeMutablePointer<Void>,
                     parser.currentSong?.album = parser.currentString
                 } else if localName == releaseDateName {
                     let dateString = parser.currentString
-                    parser.currentSong?.releaseDate = parser.parseFormatter.dateFromString(dateString)
+                    parser.currentSong?.releaseDate = parser.parseFormatter.date(from: dateString)
                 }
             }
         }
@@ -279,17 +277,17 @@ private func endElementSAX(ctx: UnsafeMutablePointer<Void>,
 /*
 This callback is invoked when the parser encounters character data inside a node. The parser class determines how to use the character data.
 */
-private func charactersFoundSAX(ctx: UnsafeMutablePointer<Void>, ch: UnsafePointer<xmlChar>, len: CInt) {
+private func charactersFoundSAX(_ ctx: UnsafeMutableRawPointer?, ch: UnsafePointer<xmlChar>?, len: CInt) {
     
     // Cast the ctx back to a LibXMLParser
-    let parser = Unmanaged<LibXMLParser>.fromOpaque(COpaquePointer(ctx)).takeUnretainedValue()
+    let parser = Unmanaged<LibXMLParser>.fromOpaque(ctx!).takeUnretainedValue()
 
     // A state variable, "storingCharacters", is set when nodes of interest begin and end.
     // This determines whether character data is handled or ignored.
     guard parser.storingCharacters else {
         return
     }
-    parser.appendCharacters(ch, length: len)
+    parser.appendCharacters(ch!, length: len)
 }
 
 
@@ -297,7 +295,7 @@ private func charactersFoundSAX(ctx: UnsafeMutablePointer<Void>, ch: UnsafePoint
 A production application should include robust error handling as part of its parsing implementation.
 The specifics of how errors are handled depends on the application.
 */
-private func errorEncounteredSAX(ctx: UnsafeMutablePointer<Void>, msg: UnsafePointer<CChar>...) {
+private func errorEncounteredSAX(_ ctx: UnsafeMutableRawPointer, msg: UnsafePointer<CChar>...) {
     // Handle errors as appropriate for your application.
     assertionFailure("Unhandled error encountered during SAX parse.")
 }
