@@ -26,7 +26,7 @@ import UIKit
 
 enum XMLParserType: Int {
     case abstract      = -1
-    case nsxmlParser
+    case xmlParser
     case libXMLParser
 }
 
@@ -73,16 +73,16 @@ class iTunesRSSParser: NSObject {
     // Although NSURLConnection is inherently asynchronous, the parsing can be quite CPU intensive on the device, so
     // the user interface can be kept responsive by moving that work off the main thread. This does create additional
     // complexity, as any code which interacts with the UI must then do so in a thread-safe manner.
-    func downloadAndParse(_ url: NSURL) {
+    func downloadAndParse(_ url: URL) {
         preconditionFailure("Object is of abstract base class iTunesRSSParser")
     }
 
     
     func start() {
-        startTimeReference = NSDate.timeIntervalSinceReferenceDate
+        startTimeReference = Date.timeIntervalSinceReferenceDate
         URLCache.shared.removeAllCachedResponses()
         parsedSongs = [Song]()
-        let url = NSURL(string: "http://ax.phobos.apple.com.edgesuite.net/WebObjects/MZStore.woa/wpa/MRSS/newreleases/limit=300/rss.xml")
+        let url = URL(string: "http://ax.phobos.apple.com.edgesuite.net/WebObjects/MZStore.woa/wpa/MRSS/newreleases/limit=300/rss.xml")
         Thread.detachNewThreadSelector(#selector(iTunesRSSParser.downloadAndParse(_:)), toTarget: self, with: url)
     }
     
@@ -91,13 +91,13 @@ class iTunesRSSParser: NSObject {
     // Each of these methods must be invoked on the main thread.
     func downloadStarted() {
         assert(Thread.isMainThread, "\(#function) at line \(#line) called on secondary thread")
-        downloadStartTimeReference = NSDate.timeIntervalSinceReferenceDate
+        downloadStartTimeReference = Date.timeIntervalSinceReferenceDate
         UIApplication.shared.isNetworkActivityIndicatorVisible = true
     }
     
     func downloadEnded() {
         assert(Thread.isMainThread, "\(#function) at line \(#line) called on secondary thread")
-        let duration = NSDate.timeIntervalSinceReferenceDate - downloadStartTimeReference!
+        let duration = Date.timeIntervalSinceReferenceDate - downloadStartTimeReference!
         downloadDuration += duration
         UIApplication.shared.isNetworkActivityIndicatorVisible = false
     }
@@ -113,7 +113,7 @@ class iTunesRSSParser: NSObject {
         
         delegate?.parserDidEndParsingData?(self)
         
-        let duration = NSDate.timeIntervalSinceReferenceDate - startTimeReference!
+        let duration = Date.timeIntervalSinceReferenceDate - startTimeReference!
         totalDuration = duration
         
         WriteStatisticToDatabase(type(of: self).parserType, downloadDuration, parseDuration, totalDuration);

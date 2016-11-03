@@ -37,7 +37,7 @@ class SongsViewController: UITableViewController, iTunesRSSParserDelegate {
             
             if let parserType = self.parserType {
                 switch parserType {
-                case .nsxmlParser:
+                case .xmlParser:
                     parser = CocoaXMLParser()
                 case .libXMLParser:
                     parser = LibXMLParser()

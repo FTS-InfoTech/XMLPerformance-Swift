@@ -4,6 +4,9 @@
 //
 //  Copyright (c) 2015 FTS InfoTech, LLC.
 //
+//  Abstract:
+//  Subclass of iTunesRSSParser that uses the Foundation framework's XMLParser (formerly NSXMLParser) for parsing the XML data.
+//
 //  Permission is hereby granted, free of charge, to any person obtaining a copy
 //  of this software and associated documentation files (the "Software"), to deal
 //  in the Software without restriction, including without limitation the rights
@@ -23,10 +26,14 @@
 //  THE SOFTWARE.
 
 import Foundation
+import UIKit
 
 class CocoaXMLParser: iTunesRSSParser, XMLParserDelegate {
+    // A string containing the contents of the current song data to be parsed.
     var currentString: String?
+    // A reference to the current song the parser is working with.
     var currentSong: Song?
+    // The following state variable deals with getting character data from XML elements.
     var storingCharacters = false
     var parseFormatter: DateFormatter {
         let formatter = DateFormatter()
@@ -39,98 +46,87 @@ class CocoaXMLParser: iTunesRSSParser, XMLParserDelegate {
         return formatter
     }
     
-    var xmlData: NSMutableData?
+    // Overall state of the parser, used to exit the run loop.
     var done = false
-    var rssConnection: NSURLConnection?
     
     
     override class func parserName() -> String {
-        return "NSXMLParser"
+        return "XMLParser"
     }
     
     override class var parserType: XMLParserType {
-        return .nsxmlParser
+        return .xmlParser
     }
     
     func startDownload(_ url: URL) {
-        let request = NSURLRequest(url: url)
+
+        // create a session data task to obtain and the XML feed
+        let sessionTask = URLSession.shared.dataTask(with: url, completionHandler: { (xmlData: Data?, response: URLResponse?, error: Error?)  in
+            self.done = true
+            if error != nil {
+                OperationQueue.main.addOperation {
+                    UIApplication.shared.isNetworkActivityIndicatorVisible = false
+                    if let sessionError = error as? NSError {
+                        if sessionError.code == NSURLErrorAppTransportSecurityRequiresSecureConnection {
+                            // if you get error NSURLErrorAppTransportSecurityRequiresSecureConnection (-1022),
+                            // then your Info.plist has not been properly configured to match the target server.
+                            //
+                            abort()
+                            
+                        } else {
+                            print("An error occurred in '\((#function))': error[\(sessionError.code)] \(error?.localizedDescription)")
+                        }
+                        
+                    }
+                }
+            } else {
+                DispatchQueue.main.async {
+                    self.downloadEnded()
+                }
+                
+                // continue our work by pasing the resulting data
+                let parser = XMLParser(data: xmlData!)
+                parser.delegate = self
+
+                self.currentString = ""
+                
+                let start = Date.timeIntervalSinceReferenceDate
+                parser.parse()
+                let duration = Date.timeIntervalSinceReferenceDate - start
+                
+                DispatchQueue.main.async {
+                    self.addToParseDuration(duration)
+                    self.parseEnded()
+                }
+                
+                self.currentString = nil
+            }
+        })
         
+        // start loading the data
+        downloadStarted()
+        
+        sessionTask.resume()
     }
     
-    override func downloadAndParse(_ url: NSURL) {
+    override func downloadAndParse(_ url: URL) {
         done = false
         
-        xmlData = NSMutableData()
         URLCache.shared.removeAllCachedResponses()
-        let theRequest = NSURLRequest(url: url as URL)
         
-        // create the connection with the request and start loading the data
-        rssConnection = NSURLConnection(request: theRequest as URLRequest, delegate: self)
+        // call startDownload, which starts downloading the songs
         DispatchQueue.main.async {
-            self .downloadStarted()
+            self .startDownload(url)
         }
         
-        if rssConnection != nil {
-            repeat {
-                RunLoop.current.run(mode: RunLoopMode.defaultRunLoopMode, before: NSDate.distantFuture )
-            } while !done
-        }
-        
-        rssConnection = nil
-        currentSong = nil
+        // this loop runs until all the data is downloaded
+        // done is set to YES in the completion block once the downloading is finished
+        repeat {
+            RunLoop.current.run(mode: RunLoopMode.defaultRunLoopMode, before: Date.distantFuture )
+        } while !done
     }
     
-    // :MARK - NSURLConnection Delegate methods
-    
-    /*
-    Disable caching so that each time we run this app we are starting with a clean slate.
-    You may not want to do this in your application.
-    */
-    func connection(_ connection: NSURLConnection, willCacheResponse cachedResponse: CachedURLResponse) -> CachedURLResponse? {
-        return nil
-    }
-    
-    // Forward errors to the delegate
-    func connection(_ connection: NSURLConnection, didFailWithError error: NSError) {
-        done = true
-        DispatchQueue.main.async {
-            self .parseError(error)
-        }
-    }
-    
-    // Called when a chunk of data has been downloaded.
-   func connection(_ connection: NSURLConnection, didReceiveData data: NSData) {
-        // Append the downloaded chunk of data.
-        xmlData?.append(data as Data)
-    }
- 
-    func connectionDidFinishLoading(_ connection: NSURLConnection) {
-        DispatchQueue.main.async {
-            self.downloadEnded()
-        }
-        
-        let parser = XMLParser(data: xmlData! as Data)
-        parser.delegate = self
-        
-        currentString = ""
-        
-        let start = NSDate.timeIntervalSinceReferenceDate
-        parser.parse()
-        let duration = NSDate.timeIntervalSinceReferenceDate - start
-        
-        DispatchQueue.main.async {
-            self.addToParseDuration(duration)
-            self.parseEnded()
-        }
-        
-        currentString = nil
-        xmlData = nil
-        
-        // Set the condition which ends the run loop.
-        done = true
-    }
 
-    
     // :MARK - Parsing support methods
     
     func finishedCurrentSong() {
@@ -144,7 +140,7 @@ class CocoaXMLParser: iTunesRSSParser, XMLParserDelegate {
     }
     
     
-    // :MARK - NSXMLParser Parsing Callbacks
+    // :MARK - XMLParser Parsing Callbacks
 
     // Constants for the XML element names that will be considered during the parse.
     // Declaring these as static constants reduces the number of objects created during the run
